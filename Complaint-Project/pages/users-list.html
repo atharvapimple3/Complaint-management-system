@@ -1,0 +1,208 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<h3>Users - List</h3>
+<table class="table table-bordered">
+
+    <thead>
+        <tr>
+            <th>User Name</th>
+            <th>Email</th>
+            <th>Contact</th>
+            <th>Password</th>
+            <th>User Type</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="tBody"></tbody>
+</table>
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editUserForm">
+            <div class="mb-3">
+              <label for="userName" class="form-label">Name</label>
+              <input type="text" class="form-control" id="userName">
+            <div class="invalid-feedback">Please enter the name</div>
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email">
+            <div class="invalid-feedback">Please enter valid email</div>
+            </div>
+            <div class="mb-3">
+              <label for="phone" class="form-label">Contact</label>
+              <input type="text" class="form-control" id="phone">
+            <div class="invalid-feedback">Please enter the number</div>
+            </div>
+            <div class="mb-3">
+                <label for="usertype" class="form-label">Select user type</label>
+                <select name="form" class="form-select" id="usertype" required>
+                    <option value="">--Select--</option>
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
+                <div class="invalid-feedback">Please select a user type</div>
+            </div> 
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password">
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>
+<script>
+(() => {
+    const URL = "http://localhost:8080/api";
+
+    let editID = null;
+    let users = [];
+    let sortDirection = 1;
+
+    const searchInput = document.createElement("input");
+    searchInput.setAttribute("type", "text");
+    searchInput.setAttribute("placeholder", "Enter the User to be searched");
+    searchInput.classList.add("form-control", "m-3");
+    document.querySelector(".table").parentNode.insertBefore(searchInput, document.querySelector(".table"));
+
+    searchInput.addEventListener("input", () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filtered = users.filter(user =>
+            user.name.toLowerCase().includes(searchTerm) || 
+            user.email.toLowerCase().includes(searchTerm)
+        );
+        renderUsers(filtered);
+    });
+
+    function fetchUsers() {
+        fetch(`${URL}/users`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": getAuthorization()
+            },
+    })
+            .then(res => res.json())
+            .then(data => {
+                users = data;
+                renderUsers(data);
+            });
+    }
+
+    function renderUsers(data) {
+        const tbody = document.getElementById("tBody");
+        tbody.innerHTML = "";
+
+        data.forEach(data => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${data.name}</td>
+                <td>${data.email}</td>
+                <td>${data.phone}</td>
+                <td>${data.password.substring(0,10)}</td>
+                <td>${data.userType}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-warning edit-btn" data-id="${data.userId}">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${data.userId}">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        document.querySelectorAll(".edit-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.getAttribute("data-id");
+                editUser(id);
+            });
+        });
+
+        document.querySelectorAll(".delete-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.getAttribute("data-id");
+                deleteUser(id);
+            });
+        });
+    }
+
+    function deleteUser(id) {
+        if (confirm("Are you sure you want to delete this User?")) {
+            fetch(`${URL}/users/${id}`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": getAuthorization()
+                },
+            })
+            .then(() => fetchUsers());
+        }
+    }
+
+    function editUser(id) {
+    fetch(`${URL}/users/${id}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": getAuthorization()
+            },
+    })
+    .then(res => res.json())
+    .then(user => {
+        document.getElementById("userName").value = user.name;
+        document.getElementById("email").value = user.email;
+        document.getElementById("phone").value = user.phone;
+        document.getElementById("password").value = user.password;
+        document.getElementById("usertype").value = user.userType;
+
+        editID = id;
+
+        const modal = new bootstrap.Modal(document.getElementById("editUserModal"));
+        modal.show();
+    });
+}
+
+document.getElementById("editUserForm").addEventListener("submit", function (e) {
+e.preventDefault();
+
+if (editID) {
+    const updatedData = {
+        name: document.getElementById("userName").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        password: document.getElementById("password").value,
+        userType:document.getElementById("usertype").value
+    };
+
+    fetch(`${URL}/users/${editID}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization":getAuthorization()
+        },
+        body: JSON.stringify(updatedData)
+    })
+    .then(() => {
+        editID = null;
+        alert("User updated");
+        fetchUsers();
+        const modal = bootstrap.Modal.getInstance(document.getElementById("editUserModal"));
+        modal.hide();
+    });
+}
+});
+
+    fetchUsers();
+})();
+</script>

@@ -1,0 +1,84 @@
+    <h2 class="mt-4">Complaints Between Dates</h2>
+
+    <div class="filter-section">
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" class="form-control d-inline-block w-auto mx-2">
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" class="form-control d-inline-block w-auto mx-2">
+        <button id="filterBtn" class="btn btn-primary">Fetch Complaints</button>
+    </div>
+
+    <input type="text" id="searchInput" class="form-control" placeholder="Search by user, department, or status">
+
+    <table class="table table-bordered table-hover" id="complaintsTable">
+        <thead class="thead-light">
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Department</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script src="/js/script.js"></script>
+<script>
+    (()=>{
+
+    const URL = 'http://localhost:8080/api/query';
+
+        document.getElementById('filterBtn').addEventListener('click', () => {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            if (!start || !end) {
+                alert("Please select both start and end dates.");
+                return;
+            }
+
+            fetch(`${URL}/between-dates/?start=${start}&end=${end}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": getAuthorization()
+                },
+        })
+                .then(res => res.json())
+                .then(data => {
+                    renderTable(data);
+                });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll("#complaintsTable tbody tr");
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#complaintsTable tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(c => {
+                const row = `<tr>
+      <td>${c.id}</td>
+      <td>${c.name}</td>
+      <td>${c.deptName}</td>
+      <td>${c.complaintType}</td>
+      <td>${c.description}</td>
+      <td>${c.status}</td>
+      <td>${c.dateFiled}</td>
+    </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+    })();
+</script>

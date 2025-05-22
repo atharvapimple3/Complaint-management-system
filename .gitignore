@@ -1,0 +1,63 @@
+# Maven target directory
+/target/
+
+# Eclipse specific files
+*.classpath
+*.project
+*.settings/
+
+# IntelliJ IDEA specific files
+.idea/
+*.iml
+*.iws
+
+# MacOS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+
+# Maven specific files
+.mvn/
+.mvnw
+.mvnw.cmd
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Build directories
+/build/
+out/
+
+# Generated files
+*.class
+*.jar
+*.war
+*.ear
+
+# Coverage reports
+jacoco.exec
+/coverage/
+
+# Dependency directories
+lib/
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
+
+# Environment files
+.env
+
+# Other
+target/

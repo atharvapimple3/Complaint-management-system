@@ -1,0 +1,50 @@
+<div id="main-content" class="container mt-5 mb-4" style="min-height: 100vh;">
+    <div class="container text-center">
+        Welcome User!<br>
+        This is the main page!
+    </div>
+</div>
+</div>
+<script>
+    (() => {
+
+        const URL = "http://localhost:8080/api";
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const userId = sessionStorage.getItem("userId");
+            if (userId) {
+                fetch(`${URL}/users/${userId}/latest-complaint`,{
+            method: "GET",
+            headers: {
+              "Content-Type":"application/json",
+              "Authorization": getAuthorization()
+            },
+            })
+                    .then(response => response.json())
+                    .then(data => {
+                        const cardHTML = `
+                        <div class = "card shadow p-3" style = "max-width:600px;">
+                            <div class = "card header bg-primary text-white">
+                                Latest Complaint Status
+                            </div>
+                            <div class = "card-body">
+                                <h5 class = "card-title"> Complaint ID: ${data.complainId}</h5>
+                                <p class = "card-text"><strong>Department:</strong> ${data.departmentName}</p>
+                                <p class = "card-text"><strong>Description:</strong> ${data.description}</p>
+                                <p class = "card-text"><strong>Status:</strong>
+                                    <span class = "badge bg-${data.status === 'resolved' ? 'success' : 'warning'} text-dark">${data.status}</span>
+                                </p>
+                                <p class = "card-text"><strong>Filed on: </strong> ${data.dateFiled}</p>
+                                </div>
+                            </div>
+                            `;
+                        document.getElementById("main-content").innerHTML = cardHTML;
+
+                    })
+                    .catch(error => {
+                        console.error("Failed to load user:", error);
+                    });
+            }
+        })
+    })
+</script>

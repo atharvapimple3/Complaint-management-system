@@ -1,0 +1,483 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<div class="container">
+  <h2 class="mb-4">Add Complaint Type</h2>
+
+  <form id="complaintForm" class="row g-3">
+    <div class="col-md-4">
+      <label for="deptId" class="form-label">Department</label>
+      <select id="deptId" class="form-select" required>
+        <option value="">Loading departments...</option>
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label for="complainType" class="form-label">Complaint Type</label>
+      <input type="text" id="complainType" class="form-control" placeholder="e.g. Water Leakage" required>
+    </div>
+
+    <div class="col-md-4">
+      <label for="severity" class="form-label">Severity Level</label>
+      <select id="severity" class="form-select" required>
+        <option value="">-- Select Severity --</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Add Complaint Type</button>
+      <button type="reset" class="btn btn-secondary ms-2">Clear</button>
+    </div>
+  </form>
+
+  <hr class="my-4">
+
+  <h3>Existing Complaint Types</h3>
+  <table class="table table-bordered border-dark">
+    <thead>
+      <tr>
+        <th>Department</th>
+        <th>Complaint Type</th>
+        <th id="severityHeader" style="cursor: pointer;">Severity <i class="bi bi-arrow-down-up"></i></th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="complaintTableBody"></tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (() => {
+      const URL = "http://localhost:8080/api";
+      let editId = null;
+      let compaintTypes = [];
+
+      function loadComplaintTypes() {
+        fetch(`${URL}/complaintTypes`,{
+            method: "GET",
+            headers: {
+              "Content-Type":"application/json",
+              "Authorization": getAuthorization()
+      }
+            })
+          .then(res => {
+            if (!res.ok) throw new Error('Failed to load complaint types');
+            return res.json();
+          })
+          .then(data => {
+            compaintTypes = data;
+            console.log("Fetched complaint types:", data);
+            renderComplaintTypesWithRowspan(data); 
+          })
+          .catch(error => {
+            console.error('Error loading complaint types:', error);
+          });
+      }
+
+      function renderComplaintTypesWithRowspan(data) {
+        const tbody = document.getElementById("complaintTableBody");
+        tbody.innerHTML = "";
+
+        data.forEach(group => {
+          const complaints = group.complaintTypes;
+          complaints.forEach((ct, index) => {
+            const row = document.createElement("tr");
+
+            if (index === 0) {
+              const deptCell = document.createElement("td");
+              deptCell.textContent = group.deptName;
+              deptCell.rowSpan = complaints.length;
+              deptCell.style.verticalAlign = "middle";
+              row.appendChild(deptCell);
+            }
+
+            row.innerHTML += `
+          <td>${ct.complainType}</td>
+          <td>${ct.severity}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-warning edit-btn" data-id="${ct.ctid}">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${ct.ctid}">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </td>
+        `;
+            tbody.appendChild(row);
+
+            document.querySelectorAll(".edit-btn").forEach(btn => {
+              btn.addEventListener("click", () => {
+                const id = btn.getAttribute("data-id");
+                editComplaintType(id);
+              });
+            });
+
+            document.querySelectorAll(".delete-btn").forEach(btn => {
+              btn.addEventListener("click", () => {
+                const id = btn.getAttribute("data-id");
+                deleteComplaintType(id);
+              });
+            });
+          });
+        });
+      }
+
+      function deleteComplaintType(id) {
+        if (confirm("Are you sure you want to delete this Complaint Type?")) {
+          fetch(`${URL}/complaintTypes/${id}`, { 
+            method: "DELETE",
+            headers:{
+              "Authorization":getAuthorization()
+            }, 
+          })
+            .then(() => loadComplaintTypes())  
+            .catch(error => {
+              console.error('Error deleting:', error);
+              alert('Error deleting Complaint Type');
+            });
+        }
+      }
+
+      function editComplaintType(id) {
+        fetch(`${URL}/complaintTypes/${id}`,{
+            method: "GET",
+            headers: {
+              "Content-Type":"application/json",
+              "Authorization": getAuthorization()
+            }
+            })
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("deptId").value = data.deptId;
+            document.getElementById("complainType").value = data.complainType;
+            document.getElementById("severity").value = data.severity;
+            document.querySelector("button[type='submit']").textContent = "Update Complaint Type";
+            editId = id;
+          });
+      }
+
+      function loadDepartments() {
+        fetch(`${URL}/departments`,{
+            method: "GET",
+            headers: {
+              "Content-Type":"application/json",
+              "Authorization": getAuthorization()
+            }
+            })
+          .then(res => {
+            if (!res.ok) throw new Error('Failed to load Departments');
+            return res.json();
+          })
+          .then(departments => {
+            const deptSelect = document.getElementById('deptId');
+            deptSelect.innerHTML = '<option value="">-- Select Department --</option>';
+            departments.forEach(dept => {
+              const option = document.createElement('option');
+              option.value = dept.deptId;
+              option.textContent = dept.deptName;
+              deptSelect.appendChild(option);
+            });
+          })
+          .catch(error => {
+            console.error('Error loading departments:', error);
+            document.getElementById('deptId').innerHTML = '<option value="">Error loading departments</option>';
+          });
+      }
+      document.getElementById("complaintForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const deptId = document.getElementById("deptId").value.trim();
+        const complaintType = document.getElementById("complainType").value.trim();
+        const severity = document.getElementById("severity").value.trim();
+
+        if (!deptId || !complaintType || !severity) {
+          alert("Please fill in all fields.");
+          return;
+        }
+
+        const complaintTypeData = { deptId, complainType: complaintType, severity };
+
+        if (editId) {
+          fetch(`${URL}/complaintTypes/${editId}`, {
+            method: 'PUT',
+            headers: { 
+              'Content-Type': 'application/json' ,
+              "Authorization":getAuthorization()
+            },
+            body: JSON.stringify(complaintTypeData)
+          })
+            .then(res => {
+              if (res.status === 200) return res.json();
+              throw new Error("Failed to Update Complaint Type");
+            })
+            .then(() => {
+              alert("Complaint Type updated");
+              this.reset();
+              document.querySelector("button[type='submit']").textContent = "Add Complaint Type";
+              editId = null;
+              loadComplaintTypes();  
+            })
+            .catch(err => {
+              console.error("Error:", err);
+              alert("Something went wrong while updating.");
+            });
+        } else {
+          fetch(`${URL}/complaintTypes`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              "Authorization": getAuthorization()
+             },
+            body: JSON.stringify(complaintTypeData)
+          })
+            .then(res => {
+              if (res.status === 201) return res.json();
+              throw new Error("Failed to Add Complaint Type");
+            })
+            .then(() => {
+              alert("Complaint Type added successfully!");
+              this.reset();
+              loadComplaintTypes();  
+            })
+            .catch(err => {
+              console.error("Error:", err);
+              alert("Something went wrong.");
+            });
+        }
+      });
+
+      loadComplaintTypes(); 
+      loadDepartments();  
+    })();
+
+
+
+
+
+
+
+//     const departmentsMap = {};
+//     let editingId = null;
+//     let allSearchComplains = [];
+
+//     function loadComplaints() {
+//       fetch('http://localhost:8080/departments')
+//         .then(res => {
+//           if (!res.ok) throw new Error('Failed to load departments');
+//           return res.json();
+//         })
+//         .then(departments => {
+//           const deptSelect = document.getElementById('deptId');
+//           deptSelect.innerHTML = '<option value="">-- Select Department --</option>';
+          
+//           departments.forEach(dept => {
+//             departmentsMap[dept.deptId] = dept.deptName;
+//             const option = document.createElement('option');
+//             option.value = dept.deptId;
+//             option.textContent = dept.deptName;
+//             deptSelect.appendChild(option);
+//           });
+          
+//           fetchComplaintTypes();
+//         })
+//         .catch(error => {
+//           console.error('Error loading departments:', error);
+//           document.getElementById('deptId').innerHTML = '<option value="">Error loading departments</option>';
+//         });
+//     }
+
+//     function fetchComplaintTypes() {
+//       fetch('http://localhost:8080/complaintTypes')
+//         .then(res => {
+//           if (!res.ok) throw new Error('Failed to load complaint types');
+//           return res.json();
+//         })
+//         .then(data => {
+//             allSearchComplains = data;
+//           renderComplaintTypes(data);
+//         })
+//         .catch(error => {
+//           console.error('Error loading complaint types:', error);
+//           document.getElementById("complaintTableBody").innerHTML = `
+//             <tr><td colspan="4" class="text-danger">Error loading complaint types</td></tr>
+//           `;
+//         });
+//     }
+
+//     function renderComplaintTypes(complaintTypes) {
+//       const tbody = document.getElementById("complaintTableBody");
+//       tbody.innerHTML = "";
+
+      
+//       const complaintsByDept = {};
+//       complaintTypes.forEach(ct => {
+//         if (!complaintsByDept[ct.deptId]) {
+//           complaintsByDept[ct.deptId] = [];
+//         }
+//         complaintsByDept[ct.deptId].push(ct);
+//       });
+
+//       Object.entries(complaintsByDept).forEach(([deptId, complaints]) => {
+//         const deptName = departmentsMap[deptId] || "Unknown";
+        
+//         complaints.forEach((ct, index) => {
+//           const row = document.createElement("tr");
+          
+//           if (index === 0) {
+//             const deptCell = document.createElement("td");
+//             deptCell.textContent = deptName;
+//             deptCell.rowSpan = complaints.length;
+//             deptCell.style.verticalAlign = "middle";
+//             row.appendChild(deptCell);
+//           }
+          
+//           row.innerHTML += `
+//             <td>${ct.complainType}</td>
+//             <td>${ct.severity}</td>
+//             <td>
+//               <button class="btn btn-sm btn-outline-warning edit-btn" data-id="${ct.ctid}">
+//                 <i class="bi bi-pencil"></i> Edit
+//               </button>
+//               <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${ct.ctid}">
+//                 <i class="bi bi-trash"></i> Delete
+//               </button>
+//             </td>
+//           `;
+          
+//           tbody.appendChild(row);
+//         });
+//       });
+//       document.querySelectorAll(".edit-btn").forEach(btn => {
+//         btn.addEventListener("click", (e) => {
+//           const id = btn.getAttribute("data-id");
+//           editComplaintType(id);
+//         });
+//       });
+
+//       document.querySelectorAll(".delete-btn").forEach(btn => {
+//         btn.addEventListener("click", (e) => {
+//           const id = btn.getAttribute("data-id");
+//           deleteComplaintType(id);
+//         });
+//       });
+//     }
+
+//     function deleteComplaintType(id) {
+//       if (confirm("Are you sure you want to delete this complaint type?")) {
+//         fetch(`http://localhost:8080/complaintTypes/${id}`, {
+//           method: "DELETE"
+//         })
+//         .then(() => loadComplaints())
+//         .catch(error => {
+//           console.error('Error deleting:', error);
+//           alert('Error deleting complaint type');
+//         });
+//       }
+//     }
+
+//     function editComplaintType(id) {
+//       fetch(`http://localhost:8080/complaintTypes/${id}`)
+//         .then(res => res.json())
+//         .then(data => {
+//           document.getElementById('deptId').value = data.deptId;
+//           document.getElementById('complainType').value = data.complainType;
+//           document.getElementById('severity').value = data.severity;
+//           editingId = id;
+//           document.querySelector("button[type='submit']").textContent = "Update Complaint Type";
+//        //   window.scrollTo({ top: 0, behavior: 'smooth' });
+//         })
+//         .catch(error => {
+//           console.error('Error loading complaint:', error);
+//           alert('Error loading complaint type for editing');
+//         });
+//     }
+
+//     document.getElementById("complaintForm").addEventListener("submit", function(e) {
+//       e.preventDefault();
+
+//       const deptId = document.getElementById('deptId').value;
+//       const complaintype = document.getElementById('complainType').value.trim();
+//       const severity = document.getElementById('severity').value;
+
+//       if (!deptId || !complaintype || !severity) {
+//         alert("Please fill in all fields.");
+//         return;
+//       }
+
+//       const data = {
+//         deptId: deptId,
+//         complainType: complaintype,
+//         severity: severity
+//       };
+
+//       const method = editingId ? "PUT" : "POST";
+//       const url = editingId 
+//         ? `http://localhost:8080/complaintTypes/${editingId}`
+//         : "http://localhost:8080/complaintTypes";
+
+//       fetch(url, {
+//         method: method,
+//         headers: {
+//           "Content-Type": "application/json"
+//         },
+//         body: JSON.stringify(data)
+//       })
+//       .then(res => {
+//         if (!res.ok) throw new Error(res.statusText);
+//         return res.json();
+//       })
+//       .then(() => {
+//         alert(editingId ? "Complaint type updated!" : "Complaint type added!");
+//         this.reset();
+//         editingId = null;
+//         document.querySelector("button[type='submit']").textContent = "Add Complaint Type";
+//         loadComplaints();
+//       })
+//       .catch(error => {
+//         console.error('Error:', error);
+//         alert(`Error: ${error.message}`);
+//       });
+//     });
+
+//     const searchInput = document.createElement("input");
+// searchInput.setAttribute("type", "text");
+// searchInput.setAttribute("placeholder", "Search by Complaint Type or Department");
+// searchInput.classList.add("form-control", "m-3");
+// document.querySelector(".table").parentNode.insertBefore(searchInput, document.querySelector(".table"));
+
+// searchInput.addEventListener("input", () => {
+//   const searchTerm = searchInput.value.toLowerCase();
+
+//   const filtered = allSearchComplains.filter(ct => {
+//     const deptName = departmentsMap[ct.deptId]?.toLowerCase() || '';
+//     return ct.complaintype.toLowerCase().includes(searchTerm) ||
+//            deptName.includes(searchTerm);
+//   });
+//   renderComplaintTypes(filtered);
+// });
+
+// let currentSeveritySort = null; 
+
+// document.getElementById("severityHeader").addEventListener("click", () => {
+//   if (currentSeveritySort === "asc") {
+//     currentSeveritySort = "desc";
+//   } else {
+//     currentSeveritySort = "asc";
+//   }
+
+//   const severityOrder = { low: 1, medium: 2, high: 3 };
+
+//   const sorted = [...allSearchComplains].sort((a, b) => {
+//     const aVal = severityOrder[a.severity.toLowerCase()] || 0;
+//     const bVal = severityOrder[b.severity.toLowerCase()] || 0;
+//     return currentSeveritySort === "asc" ? aVal - bVal : bVal - aVal;
+//   });
+
+//   renderComplaintTypes(sorted);
+// });
+
+//     loadComplaints();
+
+  </script>

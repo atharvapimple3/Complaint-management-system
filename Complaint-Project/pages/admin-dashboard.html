@@ -1,0 +1,300 @@
+<canvas id="departmentChart" width="400" height="200"></canvas>
+
+<label for="startDate">Start Date:</label>
+<input type="date" id="startDate">
+<label for="endDate">End Date:</label>
+<input type="date" id="endDate">
+<button onclick="fetchComplaints()">Filter</button>
+
+<canvas id="filteredComplaintChart"></canvas>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script src="../js/script.js"></script>
+<script>
+  (() =>{
+const URL = "http://localhost:8080/api/dashboard";
+
+  fetch(`${URL}/complaints-by-department`,{
+    method:"GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": getAuthorization()
+    },
+  })
+  .then(res => res.json())
+  .then(data =>{
+    const labels = [];
+    const counts = [];
+
+    for(let i=0;i<data.length;i++){
+      labels.push(data[i].deptName);
+      counts.push(data[i].complaintCount);
+    }
+    const ctx = document.getElementById('departmentChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Complaints per Department',
+          data: counts,
+          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  });
+
+  function fetchComplaints() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+
+      if (!start || !end) {
+        alert("Please select both start and end dates.");
+        return;
+      }
+
+      fetch(`${URL}/complaints-over-time/filter?start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => {
+          const labels = [];
+          const counts = [];
+
+          for (let i = 0; i < data.length; i++) {
+            labels.push(data[i].data.date);
+            counts.push(data[i].count);
+          }
+
+          new Chart(document.getElementById('filteredComplaintChart'), {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Complaints in Range',
+                data: counts,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                fill: false,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true }
+              }
+            }
+          });
+        });
+    }
+  })();
+ 
+</script>
+ 
+ 
+ <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <div class="container mt-4 w-50">
+    <h2 class="mb-4">Admin Dashboard</h2>
+
+    <div class="row g-4" id="summary-cards">
+
+    </div>
+    <div class="container mt-4">
+      <h2>Complaints by Department</h2>
+      <canvas id="complaintsByDeptChart"></canvas>
+    </div>
+  
+    <div class="container mt-4">
+      <h2>Complaints by Status</h2>
+      <canvas id="complaintsByStatusChart"></canvas>
+    </div>
+  </div>
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (()=>{
+
+    
+    const apiEndpoints = {
+      complaints: "http://localhost:8080/complaints",
+      users: "http://localhost:8080/users",
+      departments: "http://localhost:8080/departments"
+    };
+
+    async function getDashboardStats() {
+      const [complaintsRes, usersRes] = await Promise.all([
+        fetch(apiEndpoints.complaints),
+        fetch(apiEndpoints.users)
+      ]);
+
+      const complaints = await complaintsRes.json();
+      const users = await usersRes.json();
+
+      const totalComplaints = complaints.length;
+      const pending = complaints.filter(c => c.status.toLowerCase() === "pending").length;
+      const resolved = complaints.filter(c => c.status.toLowerCase() === "resolved").length;
+      const inProgress = complaints.filter(c => c.status.toLowerCase() === "in-progress").length;
+      const open = complaints.filter(c => c.status.toLowerCase() === "open").length;
+
+      const today = new Date().toISOString().split("T")[0];
+      const complaintsToday = complaints.filter(c => c.dateFiled?.startsWith(today)).length;
+
+      const summaryData = [
+        { label: "Total Complaints", value: totalComplaints, color: "primary" },
+        { label: "Pending Complaints", value: pending, color: "warning" },
+        { label: "Resolved Complaints", value: resolved, color: "success" },
+        { label: "Open Complaints",value: open, color:"dark"},
+        { label: "In Progress Complaints", value: inProgress, color: "info" },
+        { label: "Total Users", value: users.length, color: "secondary" },
+        { label: "Complaints Today", value: complaintsToday, color: "dark" }
+        
+      ];
+
+      renderCards(summaryData);
+    }
+
+    function renderCards(data) {
+      const container = document.getElementById("summary-cards");
+      container.innerHTML = data.map(item => `
+        <div class="col-md-4">
+          <div class="card border-start border-${item.color} border-4 shadow-sm h-100">
+            <div class="card-body">
+              <h6 class="card-title text-${item.color}">${item.label}</h6>
+              <h3 class="card-text">${item.value}</h3>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+   async function fetchAndRenderChart() {
+    try {
+      const [complaintsRes, departmentsRes] =await  Promise.all([
+        fetch(apiEndpoints.complaints),
+        fetch(apiEndpoints.departments)
+      ]);
+
+      const complaints = await complaintsRes.json();
+      const departments = await departmentsRes.json();
+
+        const complaintsByDept = departments.map(dept => {
+            const count = complaints.filter(c => c.deptId === dept.deptId).length;
+            return { label: dept.deptName, value: count };
+        });
+
+      const labels = complaintsByDept.map(c => c.label);
+      const data = complaintsByDept.map(c => c.value);
+
+      const ctx = document.getElementById('complaintsByDeptChart').getContext('2d');
+
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Complaints by Department',
+            data: data,
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#FF9F40'], 
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              callbacks: {
+                label: function(tooltipItem) {
+                  return tooltipItem.label + ": " + tooltipItem.raw + " complaints";
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }
+  async function renderStatusChart() {
+  try {
+    const res = await fetch(apiEndpoints.complaints);
+    const complaints = await res.json();
+
+    const statusCounts = {
+      pending: 0,
+      resolved: 0,
+      "in progress": 0
+    };
+
+    complaints.forEach(c => {
+      const status = c.status?.toLowerCase();
+      if (status in statusCounts) {
+        statusCounts[status]++;
+      }
+    });
+
+    const ctx = document.getElementById("complaintsByStatusChart").getContext("2d");
+
+    new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: ["Pending", "Resolved", "In Progress"],
+        datasets: [{
+          data: [
+            statusCounts["pending"],
+            statusCounts["resolved"],
+            statusCounts["in progress"]
+          ],
+          backgroundColor: ["#ffc107", "#28a745", "#17a2b8"],
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "top"
+          },
+          tooltip: {
+            callbacks: {
+              label: function(tooltipItem) {
+                const label = tooltipItem.label;
+                const value = tooltipItem.raw;
+                return `${label}: ${value} complaints`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Error rendering status chart:", err);
+  }
+} 
+
+  fetchAndRenderChart();
+  renderStatusChart();
+
+
+    getDashboardStats();
+})();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+</body>
+</html> -->

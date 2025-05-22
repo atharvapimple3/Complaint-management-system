@@ -1,0 +1,231 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <div class="container mt-5">
+    <h2 class="mb-4">Update Complaint Status</h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>User Name</th>
+          <th>Department</th>
+          <th>Complaint Type</th>
+          <th>Description</th>
+          <th>Severity</th>
+          <th>Date Filed</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="complaintBody"></tbody>
+    </table>
+  </div>
+
+  
+  <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="statusForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="statusModalLabel">Update Complaint Status</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="complaintId" />
+            <div class="mb-3">
+              <label for="statusSelect" class="form-label">Select Status</label>
+              <select class="form-select" id="statusSelect">
+                <option value="pending">Pending</option>
+                <option value="in progress">In Progress</option>
+                <option value="open">Open</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Update</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    (() =>{
+
+
+      const URL = "http://localhost:8080/api";
+      let complaints = [];
+
+      function getAllComplaints(){
+      fetch(`${URL}/complaints/update-status`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": getAuthorization()
+          }
+          })
+
+      .then(res => res.json())
+      .then(data => {
+          complaints = data;
+          const TableBody = document.getElementById("complaintBody");
+          TableBody.innerHTML = "";
+
+          data.forEach(d => {
+            TableBody.innerHTML +=
+              `
+                <tr>
+                    <td>${d.name}</td>
+                    <td>${d.deptName}</td>
+                    <td>${d.complainType}</td>
+                    <td>${d.description}</td>
+                    <td>${d.severity}</td>
+                    <td>${d.dateFiled}</td>   
+                    <td>${d.status}</td> 
+                    <td> 
+                <button class="btn btn-sm btn-outline-warning edit-btn" data-id="${d.complainId}">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${d.complainId}">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+                </td>
+                    `;
+          })
+          document.querySelectorAll(".edit-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              const id = btn.getAttribute("data-id");
+              editComplaint(id);
+            });
+          });
+
+          document.querySelectorAll(".delete-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              const id = btn.getAttribute("data-id");
+              deleteDepartment(id);
+            });
+          });
+        });
+      }
+    
+    // const complaintURL = "http://localhost:8080/complaints";
+    // const userURL = "http://localhost:8080/users";
+    // const deptURL = "http://localhost:8080/departments";
+    // const ctypeURL = "http://localhost:8080/complaintTypes";
+
+    // let complaints = [], users = [], departments = [], complaintTypes = [];
+    // let currentId = null;
+
+    // function getAllComplaints() {
+    //   fetch(complaintURL)
+    //     .then(res => res.json())
+    //     .then(complaintsData => {
+    //       if (complaintsData && complaintsData.length > 0) {
+    //       fetch(userURL)
+    //       .then(res => res.json())
+    //       .then(usersData => {
+    //        fetch(deptURL)
+    //       .then(res => res.json())
+    //        .then(departmentsData => {
+    //        fetch(ctypeURL)
+    //        .then(res => res.json())
+    //        .then(complaintTypesData => {
+               
+    //        complaints = complaintsData.filter(c =>
+    //        ["open", "in progress", "pending"].includes(c.status)
+    //          );
+    //         users = usersData;
+    //          departments = departmentsData;
+    //         complaintTypes = complaintTypesData;
+
+    //         renderTable(complaints);
+    //          });
+    //       });
+    //     });
+    //       }
+    //     });
+    // }
+
+    // function getUserName(userId) {
+    //   const user = users.find(u => u.userId === userId);
+    //   return user ? user.name : "Unknown User";
+    // }
+
+    // function getDepartmentName(deptid) {
+    //   const dept = departments.find(d => d.deptId === deptid);
+    //   return dept ? dept.deptName : "Unknown Department";
+    // }
+
+    // function getComplaintType(ctid) {
+    //   const type = complaintTypes.find(ct =>String( ct.ctid) ===String (ctid));
+    //   return type ? type.complainType : "Unknown Type";
+    // }
+
+    // function renderTable(data) {
+    //   const tbody = document.getElementById("complaintBody");
+    //   tbody.innerHTML = "";
+
+    //   data.forEach(comp => {
+    //     const row = document.createElement("tr");
+    //     row.innerHTML = `
+    //       <td>${getUserName(comp.userId)}</td>
+    //       <td>${getDepartmentName(comp.deptId)}</td>
+    //       <td>${getComplaintType(comp.ctid)}</td>
+    //       <td>${comp.description}</td>
+    //       <td>${comp.dateFiled}</td>
+    //       <td>${comp.status}</td>
+    //       <td>
+    //         <button class="btn btn-sm btn-outline-warning edit-btn" data-id="${comp.complainid}"><i class="bi bi-pencil"></i> Edit</button>
+    //       </td>
+    //     `;
+    //     tbody.appendChild(row);
+    //   });
+
+    //   document.querySelectorAll(".edit-btn").forEach(button => {
+    //     button.addEventListener("click", function () {
+    //       const id = this.getAttribute("data-id");
+    //       const complaint = complaints.find(c => c.complainid === complainid);
+    //       if (complaint) {
+    //         currentId = id;
+    //         document.getElementById("statusSelect").value = complaint.status;
+    //         const modal = new bootstrap.Modal(document.getElementById("statusModal"));
+    //         modal.show();
+    //       }
+    //     });
+    //   });
+    // }
+    // document.getElementById("statusForm").addEventListener("submit", function (e) {
+    //   e.preventDefault();
+
+    //   const updatedStatus = document.getElementById("statusSelect").value;
+
+    //   if (currentId) {
+    //     const complaint = complaints.find(c => c.complainid === currentId);
+    //     const updatedData = { ...complaint, status: updatedStatus };
+
+    //     fetch(`${complaintURL}/${currentId}`, {
+    //       method: "PUT",
+    //       headers: {
+    //         "Content-Type": "application/json"
+    //       },
+    //       body: JSON.stringify(updatedData)
+    //     })
+    //     .then(() => {
+    //       currentId = null;
+    //       getAllComplaints(); 
+    //       const modal = bootstrap.Modal.getInstance(document.getElementById("statusModal"));
+    //       modal.hide();
+    //     });
+    //   }
+    // });
+
+
+    getAllComplaints();
+
+})();
+  </script>
+  
+  
+</body>
+</html>
